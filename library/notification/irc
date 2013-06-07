@@ -76,40 +76,55 @@ local_action: irc port=6669
 # IRC module support methods.
 #
 
-from time import sleep
 import socket
 
-def send_msg(channel, msg, server='localhost', port='6667',
-        nick="ansible", color='black'):
+def send_msg(channel, message, server, port, nickname="ansible"):
     '''send message to IRC'''
 
-    colornumbers = {
-        'black'  : "01",
-        'red'    : "04",
-        'green'  : "09",
-        'yellow' : "08",
-        'blue'   : "12",
-    }
+    ircsock = None
+    sent = False
+    loop = True
 
-    try:
-        colornumber = colornumbers[color]
-    except:
-        colornumber = "01"  # black
+    ircsock = socket.socket()
+    ircsock.connect((server,int(port)))
+    ircsock.send("HANDSHAKE\r\n")
+    ircsock.send("NICK %s\r\n" % nickname)
+    ircsock.send("USER %(nick)s %(nick)s %(nick)s :ansible IRC\r\n" % {'nick':nickname})
+    ircsock.send("REGISTER\r\n")
 
-    message = "\x03" + colornumber + msg
+    data = '';
+    while loop:
+        buf = data + ircsock.recv(1024)
+        lines = buf.split("\n")
+        for data in lines:
+            data = str(data).strip()
 
-    irc = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
-    irc.connect( ( server, int(port) ) )
-    irc.send( 'NICK %s\r\n' % nick )
-    irc.send( 'USER %s %s %s :ansible IRC\r\n' % (nick, nick, nick))
-    time.sleep(1)
-    irc.send( 'JOIN %s\r\n' % channel )
-    irc.send( 'PRIVMSG %s :%s\r\n' % (channel, message))
-    time.sleep(1)
-    irc.send( 'PART %s\r\n' % channel)
-    irc.send( 'QUIT\r\n' )
-    time.sleep(1)
-    irc.close()
+            if data == '':
+                continue
+
+            # wait for some fully-formed lines from the server
+            args = data.split(None, 3)
+            if len(args) < 4:
+                continue
+
+            if args[1] == "MODE":
+                ircsock.send("MODE %s +x\r\n" % nickname)
+                ircsock.send("JOIN %s\r\n" % channel)
+
+            elif args[3].lower().startswith(channel.lower()):
+                if not sent:
+                    ircsock.send("PRIVMSG %s :%s\r\n" % (channel, message) )
+                    ircsock.send("NOOP\r\n")
+                    sent = True
+
+            elif args[3].startswith("NOOP"):
+                ircsock.send("PART %s\r\n" % channel)
+                ircsock.send("QUIT\r\n")
+                ircsock.shutdown(socket.SHUT_RDWR)
+                ircsock.close()
+                loop=False
+            else:
+                continue
 
 # ===========================================
 # Main
@@ -138,13 +153,15 @@ def main():
     channel = module.params["channel"]
 
     try:
-        send_msg(channel, msg, server, port, nick, color)
+        send_msg(channel, msg, server, port, nick)
     except Exception, e:
         module.fail_json(msg="unable to send to IRC: %s" % e)
 
-    module.exit_json(changed=False, channel=channel, nick=nick,
-                     msg=msg)
+    module.exit_json(changed=False, channel=channel, nick=nick, msg=msg )
 
 # this is magic, see lib/ansible/module_common.py
 #<<INCLUDE_ANSIBLE_MODULE_COMMON>>
 main()
+
+
+
