@@ -81,16 +81,15 @@ import socket
 def send_msg(channel, message, server, port, nickname="ansible"):
     '''send message to IRC'''
 
-    ircsock = None
-    sent = False
+    # loop control vars
     loop = True
+    sent = False
 
+    # init the socket, and send username handshaking 
     ircsock = socket.socket()
     ircsock.connect((server,int(port)))
-    ircsock.send("HANDSHAKE\r\n")
     ircsock.send("NICK %s\r\n" % nickname)
     ircsock.send("USER %(nick)s %(nick)s %(nick)s :ansible IRC\r\n" % {'nick':nickname})
-    ircsock.send("REGISTER\r\n")
 
     data = '';
     while loop:
