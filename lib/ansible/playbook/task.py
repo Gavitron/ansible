@@ -115,7 +115,7 @@ class Task(object):
         self.args         = ds.get('args', {})
 
         if self.sudo:
-            self.sudo_user    = template.template(play.basedir, ds.get('sudo_user', play.sudo_user), module_vars)
+            self.sudo_user    = ds.get('sudo_user', play.sudo_user)
             self.sudo_pass    = ds.get('sudo_pass', play.playbook.sudo_pass)
         else:
             self.sudo_user    = None
@@ -230,5 +230,6 @@ class Task(object):
             self.only_if = utils.compile_when_to_only_if(self.when)
 
         if additional_conditions:
-            self.only_if = '(' + self.only_if + ') and (' + ' ) and ('.join(additional_conditions) + ')'
+            self.only_if = [ self.only_if ] 
+            self.only_if.extend(additional_conditions)
 

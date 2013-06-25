@@ -1,7 +1,45 @@
 Ansible Changes By Release
 ==========================
 
-1.2 "Right Now" -- release pending
+1.3 "Top of the World" - Release pending!
+
+Major new features:
+
+* new /etc/ansible/facts.d allows JSON or INI style facts to be provided from the remote node, and supports executable fact programs in this dir. Files must end in *.fact.
+* ability to make undefined template variables raise errors, see ansible.cfg
+
+New modules:
+
+* notifications: datadog_event -- send data to datadog
+* cloud: digital_ocean -- module for digital ocean provisioning
+* cloud: rds -- Amazon relational database service
+
+Misc changes:
+
+* Added OpenRC support (Gentoo) to the service module
+* ansible_ssh_user value is available to templates
+* added placement_group parameter to ec2 module
+* new sha256 parameter to get_url module for validation
+* search for mount binaries in system path and sbin vs assuming path
+* allowed inventory file to be read from a pipe
+* added Solaris distribution facts
+* fixed bug along error path in quantum_network module
+* user password update mode is controllable in user module now (creation vs every time)
+* added check mode support to the OpenBSD package module
+* Fix for MySQL 5.6 compatibility
+* HP UX virtualization facts
+* fixed some executable bits in git
+* made rhn_register module compatible with EL5
+* fix for setup module epoch time in Solaris
+* sudo_user is now expanded later allowing to be set at inventory scope
+* mondodb_user module change to also support MongoDB 2.2
+* new state=hard option to the file module for hardlinks vs softlinks
+* fixes to apt module purging option behavior
+* fixes for device facts with multiple PCI domains
+* added "with_inventory_hostnames" lookup plugin, which can take a pattern and loop over hostnames matching the pattern and is great for use with delegate_to and so on.
+* ec2 module supports adding to multiple security groups
+
+1.2 "Right Now" -- June 10, 2013
 
 Core Features:
 
@@ -11,7 +49,7 @@ Core Features:
 * ability to use variables from {{ }} syntax in mainline playbooks, new 'when' conditional, as detailed
   in documentation.  Can disable old style replacements in ansible.cfg if so desired, but are still active
   by default.
-* can set ansible_private_key_file as an inventory variable (similar to ansible_ssh_host, etc)
+* can set ansible_ssh_private_key_file as an inventory variable (similar to ansible_ssh_host, etc)
 * 'when' statement can be affixed to task includes to auto-affix the conditional to each task therein
 * cosmetic: "*****" banners in ansible-playbook output are now constant width
 * --limit can now be given a filename (--limit @filename) to constrain a run to a host list on disk
@@ -35,6 +73,9 @@ Modules added:
 * cloud: rax: module for creating instances in the rackspace cloud (uses pyrax)
 * packages: npm: node.js package management
 * packages: pkgng: next-gen package manager for FreeBSD
+* packages: redhat_subscription: manage Red Hat subscription usage
+* packages: rhn_register: basic RHN registration
+* packages: zypper (SuSE)
 * database: postgresql_priv: manages postgresql priveledges
 * networking: bigip_pool: load balancing with F5s
 * networking: ec2_elb: add and remove machines from ec2 elastic load balancers
@@ -131,6 +172,7 @@ the variable is still registered for the host, with the attribute skipped: True.
 * debug module always outputs data without having to specify -v
 * fix for sysctl module creating new keys (must specify checks=none)
 * NetBSD and OpenBSD support for the user and groups modules
+* Add encrypted password support to password lookup
 
 1.1 "Mean Street" -- 4/2/2013
 
@@ -441,7 +483,7 @@ Highlighted Core Changes:
 
 Other Core Changes:
 
-* ansible config file can also go in '.ansible.cfg' in cwd in addition to ~/.ansible.cfg and /etc/ansible/ansible.cfg
+* ansible config file can also go in 'ansible.cfg' in cwd in addition to ~/.ansible.cfg and /etc/ansible/ansible.cfg
 * fix for inventory hosts at API level when hosts spec is a list and not a colon delimited string
 * ansible-pull example now sets up logrotate for the ansible-pull cron job log
 * negative host matching (!hosts) fixed for external inventory script usage

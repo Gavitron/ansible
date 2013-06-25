@@ -5,13 +5,13 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 
 Name: ansible
 Release: 1%{?dist}
-Summary: SSH-based configuration management, deployment, and task execution system
-Version: 1.2
+Summary: SSH-based configuration management, deployment, and orchestration engine
+Version: 1.3
 
 Group: Development/Libraries
 License: GPLv3
-Source0: http://ansible.cc/releases/%{name}-%{version}.tar.gz
-Url: http://ansible.cc
+Source0: http://www.ansibleworks.com/releases/%{name}-%{version}.tar.gz
+Url: http://www.ansibleworks.com
 
 BuildArch: noarch
 %if 0%{?rhel} && 0%{?rhel} <= 5
@@ -31,7 +31,7 @@ Requires: python-jinja2
 %description
 
 Ansible is a radically simple model-driven configuration management,
-multi-node deployment, and remote task execution system. Ansible works
+multi-node deployment, and orchestration engine. Ansible works
 over SSH and does not require any software or daemons to be installed
 on remote nodes. Extension modules can be written in any language and
 are transferred to managed machines automatically.
@@ -116,8 +116,11 @@ rm -rf $RPM_BUILD_ROOT
 
 %changelog
 
-* Tue Apr 2 2013 Michael DeHaan <michael.dehaan@gmail.com> - 1.2-0
-* release pending
+* Mon Jun 10 2013 Michael DeHaan <michael.dehaan@gmail.com> - 1.3-0
+* (release pending)
+
+* Mon Jun 10 2013 Michael DeHaan <michael.dehaan@gmail.com> - 1.2-0
+* Release 1.2
 
 * Tue Apr 2 2013 Michael DeHaan <michael.dehaan@gmail.com> - 1.1-0
 * Release 1.1

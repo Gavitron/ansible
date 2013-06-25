@@ -37,6 +37,16 @@ options:
         default: none
         description:
             - identifier of key
+    data:
+        required: false
+        default: none
+        description:
+            - keyfile contents
+    file:
+        required: false
+        default: none
+        description:
+            - keyfile path
     url:
         required: false
         default: none
@@ -48,16 +58,25 @@ options:
         default: present
         description:
             - used to specify if key is being added or revoked
-examples:
-    - code: "apt_key: url=https://ftp-master.debian.org/keys/archive-key-6.0.asc state=present"
-      description: Add an Apt signing key, uses whichever key is at the URL
-    - code: "apt_key: id=473041FA url=https://ftp-master.debian.org/keys/archive-key-6.0.asc state=present"
-      description: Add an Apt signing key, will not download if present
-    - code: "apt_key: url=https://ftp-master.debian.org/keys/archive-key-6.0.asc state=absent"
-      description: Remove an Apt signing key, uses whichever key is at the URL
-    - code: "apt_key: id=473041FA state=absent"
-      description: Remove a Apt specific signing key
 '''
+
+EXAMPLES = '''
+# Add an Apt signing key, uses whichever key is at the URL
+- apt_key: url=https://ftp-master.debian.org/keys/archive-key-6.0.asc state=present
+
+# Add an Apt signing key, will not download if present
+- apt_key: id=473041FA url=https://ftp-master.debian.org/keys/archive-key-6.0.asc state=present
+
+# Remove an Apt signing key, uses whichever key is at the URL
+- apt_key: url=https://ftp-master.debian.org/keys/archive-key-6.0.asc state=absent
+
+# Remove a Apt specific signing key
+- apt_key: id=473041FA state=absent
+
+# Add a key from a file on the Ansible server    
+- apt_key: data="{{ lookup('file', 'apt.gpg') }}" state=present
+'''
+
 
 # FIXME: standardize into module_common
 from urllib2 import urlopen, URLError
@@ -112,7 +131,7 @@ def download_key(module, url):
 
 def add_key(module, key):
     cmd = "apt-key add -"
-    (rc, out, err) = module.run_command(cmd, data=key, check_rc=True)
+    (rc, out, err) = module.run_command(cmd, data=key, check_rc=True, binary_data=True)
     return True
 
 def remove_key(module, key_id):
@@ -127,6 +146,7 @@ def main():
             id=dict(required=False, default=None),
             url=dict(required=False),
             data=dict(required=False),
+            file=dict(required=False),
             key=dict(required=False),
             state=dict(required=False, choices=['present', 'absent'], default='present')
         ),
@@ -136,6 +156,7 @@ def main():
     key_id          = module.params['id']
     url             = module.params['url']
     data            = module.params['data']
+    file            = module.params['file']
     state           = module.params['state']
     changed         = False
     
@@ -149,14 +170,14 @@ def main():
         if key_id and key_id in keys:
             module.exit_json(changed=False)
         else:
-            if not data:
+            if not file and not data:
                 data = download_key(module, url)
             if key_id and key_id in keys:
                 module.exit_json(changed=False)
             else:
                 if module.check_mode:
                     module.exit_json(changed=True)
-                add_key(module, data)
+                add_key(module, (file if file else "-"), data)
                 changed=False
                 keys2 = all_keys(module)
                 if len(keys) != len(keys2):

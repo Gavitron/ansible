@@ -1,11 +1,6 @@
 Playbooks
 =========
 
-.. image:: http://ansible.cc/docs/_static/ansible_fest_2013.png
-   :alt: ansiblefest 2013
-   :target: http://ansibleworks.com/fest
-
-
 .. contents::
    :depth: 2
    :backlinks: top
@@ -41,8 +36,8 @@ Playbook Language Example
 Playbooks are expressed in YAML format and have a minimum of syntax.
 Each playbook is composed of one or more 'plays' in a list.
 
-The goal of a play is map a group of hosts to some well defined roles, represented by
-things ansible called tasks.  At the basic level, a task is nothing more than a call
+The goal of a play is to map a group of hosts to some well defined roles, represented by
+things ansible calls tasks.  At a basic level, a task is nothing more than a call
 to an ansible module, which you should have learned about in earlier chapters.
 
 By composing a playbook of multiple 'plays', it is possible to
@@ -148,18 +143,18 @@ The `vars` section contains a list of variables and values that can be used in t
 
 .. note::
    You can also keep variables in separate files and include them alongside inline `vars` with a `vars_files` declaration
-   in the play. See the `Advanced Playbooks chapter <http://ansible.cc/docs/playbooks2.html#variable-file-separation>`_
+   in the play. See the `Advanced Playbooks chapter <http://www.ansibleworks.com/docs/playbooks2.html#variable-file-separation>`_
    for more info.
 
 These variables can be used later in the playbook like this::
 
     $varname or ${varname} or {{ varname }}
 
-If you ever want to do anything complex like uppercasing a string, {{ varname }} is best, as it uses the Jinja2 templating engine.  It is a good idea to get in the habit of using this form most of the time when the output is to be a string.  
+If you ever want to do anything complex like uppercasing a string, {{ varname }} is best, as it uses the Jinja2 templating engine.  It is a good idea to get in the habit of using this form most of the time when the output is to be a string.
 
 If just referencing the value of another simple variable though, it's fine to say $x or ${x}.  This is common for when a datastructure has a member that is the value of another datastructure.
 
-To learn more about Jinja2, you can optionally see the `Jinja2 docs <http://jinja.pocoo.org/docs/>`_ - though remember that Jinja2 loops and conditionals are only for 'templates' in Ansible, in playbooks, ansible has the 'when' and 'with' keywords for conditionals and loops. 
+To learn more about Jinja2, you can optionally see the `Jinja2 docs <http://jinja.pocoo.org/docs/>`_ - though remember that Jinja2 loops and conditionals are only for 'templates' in Ansible, in playbooks, ansible has the 'when' and 'with' keywords for conditionals and loops.
 
 If there are discovered variables about the system, called 'facts', these variables bubble up back into the
 playbook, and can be used on each system just like explicitly set variables.  Ansible provides several
@@ -442,6 +437,8 @@ inside another.
    decide what include file to use.  All hosts contained within the
    play are going to get the same tasks.  ('*when*' provides some
    ability for hosts to conditionally skip tasks).
+
+.. _roles:
 
 Roles
 `````

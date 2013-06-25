@@ -1,11 +1,6 @@
 Glossary
 ========
 
-.. image:: http://ansible.cc/docs/_static/ansible_fest_2013.png
-   :alt: ansiblefest 2013
-   :target: http://ansibleworks.com/fest
-
-
 The following is a list (and re-explanation) of term definitions used elsewhere in the Ansible documentation.
 
 Consult the documentation home page for the full documentation and to see this in context, but this should be a good resource
@@ -39,7 +34,7 @@ and /usr/bin/ansible-playbook.
 Callback Plugin
 +++++++++++++++
 
-Refers to some user-written code that can intercept the results from Ansbile and do something with it.  Some supplied examples
+Refers to some user-written code that can intercept the results from Ansible and do something with it.  Some supplied examples
 in the github project perform custom logging, send email, or even play sound effects.
 
 Check Mode
@@ -148,7 +143,7 @@ if they are not to be accessed on the default SSH port.
 Host Specifier
 ++++++++++++++
 
-Each Play in Ansbile maps a series of tasks (which define the role, purpose, or orders of a system) to a set of systems.
+Each Play in Ansible maps a series of tasks (which define the role, purpose, or orders of a system) to a set of systems.
 
 This "hosts:" directive in each play is often called the hosts specifier.
 
@@ -218,7 +213,7 @@ called an "External Nodes Classifier") and works more or less exactly the same w
 Jinja2
 ++++++
 
-Jinja2 is the preferred templating language of Ansbile's template module.  It is a very simple Python template language that is generally
+Jinja2 is the preferred templating language of Ansible's template module.  It is a very simple Python template language that is generally
 readable and easy to write.
 
 JSON
@@ -344,6 +339,13 @@ to 'root' if not already set to root, or set the mode to '0644' if not already s
 are 'idempotent' meaning change commands are not run unless needed, and ansible will bring the system back to a desired
 state regardless of the actual state -- rather than you having to tell it how to get to the state.
 
+Roles
++++++
+
+Roles are units of organization in ansible.  Assigning a role to a group of hosts (or a set of groups, or host patterns, etc) implies that they should implement a specific behavior.  A role
+may include applying certain variable values, certain tasks, and certain handlers -- or just one or more of these things.  Because of the file structure associated with a role, roles become
+units of redistributablity for sharing behavior among playbooks -- or even with other users.
+
 Rolling Update
 ++++++++++++++
 
@@ -385,7 +387,7 @@ features, paramiko (the default) is a fine choice.  Ansible will warn you if it 
 Tags
 ++++
 
-Ansbile allows tagging resources in a playbook with arbitrary keywords, and then running only the parts of the playbook that
+Ansible allows tagging resources in a playbook with arbitrary keywords, and then running only the parts of the playbook that
 correspond to those certain keywords.  For instance, it is possible to have an entire OS configuration, and have certain steps
 labelled "ntp", and then run just the "ntp" steps to reconfigure the time server information on a remote server.
 

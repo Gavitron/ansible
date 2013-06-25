@@ -30,7 +30,7 @@ options:
   pkg:
     description:
       - A package name or package specifier with version, like C(foo) or C(foo=1.0)
-    required: true
+    required: false
     default: null
   state:
     description:
@@ -87,26 +87,37 @@ author: Matthew Williams
 notes:
    - Three of the upgrade modes (C(full), C(safe) and its alias C(yes)) require C(aptitude), otherwise
      C(apt-get) suffices.
-examples:
-    - code: "apt: pkg=foo update_cache=yes"
-      description: Update repositories cache and install C(foo) package
-    - code: "apt: pkg=foo state=absent"
-      description: Remove C(foo) package
-    - code: "apt: pkg=foo state=present"
-      description: Install the package C(foo)
-    - code: "apt: pkg=foo=1.00 state=present"
-      description: Install the version '1.00' of package C(foo)
-    - code: "apt: pkg=nginx state=latest default_release=squeeze-backports update_cache=yes"
-      description: Update the repository cache and update package C(nginx) to latest version using default release C(squeeze-backport)
-    - code: "apt: pkg=openjdk-6-jdk state=latest install_recommends=no"
-      description: Install latest version of C(openjdk-6-jdk) ignoring C(install-reccomends)
-    - code: "apt: upgrade=dist"
-      description: Update all packages to the latest version
-    - code: "apt: update_cache=yes"
-      description: Run the equivalent of C(apt-get update) as a separate step
-    - code: "apt: update_cache=yes cache_valid_time=3600"
-      description: Only run C(update_cache=yes) if the last one is more than more than 3600 seconds ago
 '''
+
+EXAMPLES = '''
+# Update repositories cache and install "foo" package
+- apt: pkg=foo update_cache=yes
+
+# Remove "foo" package
+- apt: pkg=foo state=absent
+
+# Install the package "foo"
+- apt: pkg=foo state=present
+
+# Install the version '1.00' of package "foo"
+- apt: pkg=foo=1.00 state=present
+
+# Update the repository cache and update package "nginx" to latest version using default release squeeze-backport
+- apt: pkg=nginx state=latest default_release=squeeze-backports update_cache=yes
+
+# Install latest version of "openjdk-6-jdk" ignoring "install-reccomends"
+- apt: pkg=openjdk-6-jdk state=latest install_recommends=no
+
+# Update all packages to the latest version
+- apt: upgrade=dist
+
+# Run the equivalent of "apt-get update" as a separate step
+- apt: update_cache=yes
+
+# Only run "update_cache=yes" if the last one is more than more than 3600 seconds ago
+- apt: update_cache=yes cache_valid_time=3600
+'''
+
 
 import traceback
 # added to stave off future warnings about apt api
@@ -139,25 +150,30 @@ def package_status(m, pkgname, version, cache, state):
         if state == 'install':
             m.fail_json(msg="No package matching '%s' is available" % pkgname)
         else:
-            return False, False
+            return False, False, False
+    try:
+        has_files = len(pkg.installed_files) > 0
+    except AttributeError:
+        has_files = False  # older python-apt cannot be used to determine non-purged
+
     if version:
         try :
-            return pkg.is_installed and fnmatch.fnmatch(pkg.installed.version, version), False
+            return pkg.is_installed and fnmatch.fnmatch(pkg.installed.version, version), False, has_files
         except AttributeError:
             #assume older version of python-apt is installed
-            return pkg.isInstalled and fnmatch.fnmatch(pkg.installedVersion, version), False
+            return pkg.isInstalled and fnmatch.fnmatch(pkg.installedVersion, version), False, has_files
     else:
         try :
-            return pkg.is_installed, pkg.is_upgradable
+            return pkg.is_installed, pkg.is_upgradable, has_files
         except AttributeError:
             #assume older version of python-apt is installed
-            return pkg.isInstalled, pkg.isUpgradable
+            return pkg.isInstalled, pkg.isUpgradable, has_files
 
 def install(m, pkgspec, cache, upgrade=False, default_release=None, install_recommends=True, force=False):
     packages = ""
     for package in pkgspec:
         name, version = package_split(package)
-        installed, upgradable = package_status(m, name, version, cache, state='install')
+        installed, upgradable, has_files = package_status(m, name, version, cache, state='install')
         if not installed or (upgrade and upgradable):
             packages += "'%s' " % package
 
@@ -191,16 +207,17 @@ def remove(m, pkgspec, cache, purge=False):
     packages = ""
     for package in pkgspec:
         name, version = package_split(package)
-        installed, upgradable = package_status(m, name, version, cache, state='remove')
-        if installed:
+        installed, upgradable, has_files = package_status(m, name, version, cache, state='remove')
+        if installed or (has_files and purge):
             packages += "'%s' " % package
 
     if len(packages) == 0:
         m.exit_json(changed=False)
     else:
-        purge = ''
         if purge:
             purge = '--purge'
+        else:
+            purge = ''
         cmd = "%s -q -y %s remove %s" % (APT_GET_CMD, purge,packages)
 
         if m.check_mode:

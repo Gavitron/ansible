@@ -41,7 +41,11 @@ if constants.DEFAULT_LOG_PATH != '':
     user = getpass.getuser()
     logger = logging.getLogger("p=%s u=%s | " % (mypid, user))
 
-callback_plugins = [x for x in utils.plugins.callback_loader.all()]
+callback_plugins = []
+
+def load_callback_plugins():
+    global callback_plugins
+    callback_plugins = [x for x in utils.plugins.callback_loader.all()]
 
 def get_cowsay_info():
     if constants.ANSIBLE_NOCOWS is not None:
@@ -581,7 +585,9 @@ class PlaybookCallbacks(object):
 
     def on_vars_prompt(self, varname, private=True, prompt=None, encrypt=None, confirm=False, salt_size=None, salt=None, default=None):
 
-        if prompt:
+        if prompt and default:
+            msg = "%s [%s]: " % (prompt, default)
+        elif prompt:
             msg = "%s: " % prompt
         else:
             msg = 'input for %s: ' % varname
