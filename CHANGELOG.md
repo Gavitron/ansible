@@ -11,8 +11,12 @@ Major new features:
 New modules:
 
 * notifications: datadog_event -- send data to datadog
-* cloud: digital_ocean -- module for digital ocean provisioning
+* cloud: digital_ocean -- module for digital ocean provisioning, also includes inventory module
 * cloud: rds -- Amazon relational database service
+* cloud: linode -- also included, an inventory module
+* net_infrastructure: arista_ 
+* system: stat -- reports on stat(istics) of remote files, for use with 'register'
+* htpasswd -- manipulate htpasswd files
 
 Misc changes:
 
@@ -38,6 +42,42 @@ Misc changes:
 * fixes for device facts with multiple PCI domains
 * added "with_inventory_hostnames" lookup plugin, which can take a pattern and loop over hostnames matching the pattern and is great for use with delegate_to and so on.
 * ec2 module supports adding to multiple security groups
+* cloudformation module fix down the error path, removed 'wait_for' parameter
+* added --only-if-changed to ansible-pull, which runs only if the repo has changes (not default)
+* added 'mandatory', a Jinja2 filter that checks if a variable is defined: {{ foo|mandatory }}
+* added support for multiple size formats to the lvol module
+* timing reporting on wait_for module now includes the delay time
+* IRC module can now send a server password
+* "~" now expanded on each component of configured plugin paths
+* fix for easy_install module when dealing with virtualenv
+* rackspace module now explicitly indicates rackspace vs vanilla openstack
+* add_host module does not report changed=True any longer
+* explanatory error message when using fireball with sudo message has been improved
+* git module now automatically pulls down git submodules
+* negated patterns don't require "all:!foo", you can just say "!foo" now to select all not foos.
+* fix for Debian services always reporting changed when toggling enablement bit
+* roles files now tolerate files named 'main.yaml' and 'main' in addition to main.yaml
+* some help cleanup to command line flags on scripts
+* force option reinstated for file module, can create symlinks to non-existant files, etc
+* added termination support to ec2 module
+* --ask-sudo-pass or --sudo-user does not enable all options to use sudo in ansible-playbook
+
+1.2.2 "Hear About It Later" (reprise) -- July 4, 2013
+
+* Added a configuration file option [paramiko_connection] record_host_keys which allows the code that paramiko uses
+to update known_hosts to be disabled.  This is done because paramiko can be very slow at doing this if you have a
+large number of hosts and some folks may not want this behavior.  This can be toggled independently of host key checking
+and does not affect the ssh transport plugin.  Use of the ssh transport plugin is preferred if you have ControlPersist
+capability, and Ansible by default in 1.2.1 and later will autodetect.
+
+1.2.1 "Hear About It Later" -- July 4, 2013
+
+* Connection default is now "smart", which discovers if the system openssh can support ControlPersist, and uses
+  it if so, if not falls back to paramiko.
+* Host key checking is on by default.  Disable it if you like by adding host_key_checking=False in the [default]
+  section of /etc/ansible/ansible.cfg or ~/ansible.cfg or by exporting ANSIBLE_HOST_KEY_CHECKING=False
+* Paramiko now records host keys it was in contact with host key checking is on.  It is somewhat sluggish when doing this,
+  so switch to the 'ssh' transport if this concerns you.
 
 1.2 "Right Now" -- June 10, 2013
 

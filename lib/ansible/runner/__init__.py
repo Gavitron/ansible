@@ -31,6 +31,7 @@ import sys
 import shlex
 import pipes
 import jinja2
+import subprocess
 
 import ansible.constants as C
 import ansible.inventory
@@ -50,10 +51,13 @@ except ImportError:
     HAS_ATFORK=False
 
 multiprocessing_runner = None
+        
+OUTPUT_LOCKFILE  = tempfile.TemporaryFile()
+PROCESS_LOCKFILE = tempfile.TemporaryFile()
 
 ################################################
 
-def _executor_hook(job_queue, result_queue):
+def _executor_hook(job_queue, result_queue, new_stdin):
 
     # attempt workaround of https://github.com/newsapps/beeswithmachineguns/issues/17
     # this function also not present in CentOS 6
@@ -64,7 +68,7 @@ def _executor_hook(job_queue, result_queue):
     while not job_queue.empty():
         try:
             host = job_queue.get(block=False)
-            return_data = multiprocessing_runner._executor(host)
+            return_data = multiprocessing_runner._executor(host, new_stdin)
             result_queue.put(return_data)
 
             if 'LEGACY_TEMPLATE_WARNING' in return_data.flags:
@@ -133,6 +137,10 @@ class Runner(object):
         error_on_undefined_vars=C.DEFAULT_UNDEFINED_VAR_BEHAVIOR # ex. False
         ):
 
+        # used to lock multiprocess inputs and outputs at various levels
+        self.output_lockfile  = OUTPUT_LOCKFILE
+        self.process_lockfile = PROCESS_LOCKFILE
+
         if not complex_args:
             complex_args = {}
 
@@ -166,8 +174,18 @@ class Runner(object):
         self.environment      = environment
         self.complex_args     = complex_args
         self.error_on_undefined_vars = error_on_undefined_vars
-
         self.callbacks.runner = self
+
+        # if the transport is 'smart' see if SSH can support ControlPersist if not use paramiko
+        # 'smart' is the default since 1.2.1/1.3
+        if self.transport == 'smart':
+            cmd = subprocess.Popen(['ssh','-o','ControlPersist'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            (out, err) = cmd.communicate() 
+            if "Bad configuration option" in err:
+                self.transport = "paramiko"
+            else:
+                self.transport = "ssh" 
+
 
         # misc housekeeping
         if subset and self.inventory._subset is None:
@@ -311,7 +329,7 @@ class Runner(object):
         cmd = " ".join([environment_string.strip(), shebang.replace("#!","").strip(), cmd])
         cmd = cmd.strip()
 
-        if tmp.find("tmp") != -1 and C.DEFAULT_KEEP_REMOTE_FILES != '1' and not persist_files:
+        if tmp.find("tmp") != -1 and not C.DEFAULT_KEEP_REMOTE_FILES and not persist_files:
             if not self.sudo or self.sudo_user == 'root':
                 # not sudoing or sudoing to root, so can cleanup files in the same step
                 cmd = cmd + "; rm -rf %s >/dev/null 2>&1" % tmp
@@ -320,7 +338,7 @@ class Runner(object):
         if self.sudo and self.sudo_user != 'root':
             # not sudoing to root, so maybe can't delete files as that other user
             # have to clean up temp files as original user in a second step
-            if tmp.find("tmp") != -1 and C.DEFAULT_KEEP_REMOTE_FILES != '1' and not persist_files:
+            if tmp.find("tmp") != -1 and not C.DEFAULT_KEEP_REMOTE_FILES and not persist_files:
                 cmd2 = "rm -rf %s >/dev/null 2>&1" % tmp
                 self._low_level_exec_command(conn, cmd2, tmp, sudoable=False)
 
@@ -331,7 +349,7 @@ class Runner(object):
 
     # *****************************************************
 
-    def _executor(self, host):
+    def _executor(self, host, new_stdin):
         ''' handler for multiprocessing library '''
 
         def get_flags():
@@ -344,7 +362,9 @@ class Runner(object):
             return flags
 
         try:
-            exec_rc = self._executor_internal(host)
+            self._new_stdin = new_stdin
+
+            exec_rc = self._executor_internal(host, new_stdin)
             if type(exec_rc) != ReturnData:
                 raise Exception("unexpected return type: %s" % type(exec_rc))
             exec_rc.flags = get_flags()
@@ -363,7 +383,7 @@ class Runner(object):
 
     # *****************************************************
 
-    def _executor_internal(self, host):
+    def _executor_internal(self, host, new_stdin):
         ''' executes any module one or more times '''
 
         host_variables = self.inventory.get_variables(host)
@@ -516,6 +536,8 @@ class Runner(object):
 
         conn = None
         actual_host = inject.get('ansible_ssh_host', host)
+        # allow ansible_ssh_host to be templated
+        actual_host = template.template(self.basedir, actual_host, inject, fail_on_undefined=True)
         actual_port = port
         actual_user = inject.get('ansible_ssh_user', self.remote_user)
         actual_pass = inject.get('ansible_ssh_pass', self.remote_pass)
@@ -540,6 +562,8 @@ class Runner(object):
             try:
                 delegate_info = inject['hostvars'][delegate_to]
                 actual_host = delegate_info.get('ansible_ssh_host', delegate_to)
+                # allow ansible_ssh_host to be templated
+                actual_host = template.template(self.basedir, actual_host, inject, fail_on_undefined=True)
                 actual_port = delegate_info.get('ansible_ssh_port', port)
                 actual_user = delegate_info.get('ansible_ssh_user', actual_user)
                 actual_pass = delegate_info.get('ansible_ssh_pass', actual_pass)
@@ -729,7 +753,7 @@ class Runner(object):
             complex_args_json = utils.jsonify(complex_args)
             # We force conversion of module_args to str because module_common calls shlex.split,
             # a standard library function that incorrectly handles Unicode input before Python 2.7.3.
-            encoded_args = repr(str(module_args))
+            encoded_args = repr(module_args.encode('utf-8'))
             encoded_lang = repr(C.DEFAULT_MODULE_LANG)
             encoded_complex = repr(complex_args_json)
 
@@ -774,8 +798,9 @@ class Runner(object):
 
         workers = []
         for i in range(self.forks):
+            new_stdin = os.fdopen(os.dup(sys.stdin.fileno()))
             prc = multiprocessing.Process(target=_executor_hook,
-                args=(job_queue, result_queue))
+                args=(job_queue, result_queue, new_stdin))
             prc.start()
             workers.append(prc)
 
@@ -786,7 +811,7 @@ class Runner(object):
             for worker in workers:
                 worker.terminate()
                 worker.join()
-
+        
         results = []
         try:
             while not result_queue.empty():
@@ -847,7 +872,7 @@ class Runner(object):
             # We aren't iterating over all the hosts in this
             # group. So, just pick the first host in our group to
             # construct the conn object with.
-            result_data = self._executor(hosts[0]).result
+            result_data = self._executor(hosts[0], None).result
             # Create a ResultData item for each host in this group
             # using the returned result. If we didn't do this we would
             # get false reports of dark hosts.
@@ -865,7 +890,8 @@ class Runner(object):
                     raise errors.AnsibleError("interrupted")
                 raise
         else:
-            results = [ self._executor(h) for h in hosts ]
+            results = [ self._executor(h, None) for h in hosts ]
+
         return self._partition_results(results)
 
     # *****************************************************

@@ -48,10 +48,12 @@ systems).  Use this to get an idea what might happen, but is not a substitute fo
 Connection Type, Connection Plugin
 ++++++++++++++++++++++++++++++++++
 
-Ansible by default talks to remote machines over SSH using a library called 'paramiko'.  It also supports using native OpenSSH,
-which if you have a new-enough open SSH, is equally fast, but also enables some features like Kereberos and jump hosts.  This is
-govered in the getting started section.  There are also other connection types like 'fireball' mode, which must be bootstrapped
-over SSH but is very fast, and local mode, which acts on the local system.  Users can also write their own connection plugins.
+Ansible by default talks to remote machines through pluggable libraries.  Ansible supports native OpenSSH ('ssh'), or a python
+implementation called 'paramiko'.  OpenSSH is preferred if you have a new-enough open SSH, and also enables some features 
+like Kereberos and jump hosts.  This is covered in the getting started section.  
+There are also other connection types like 'fireball' mode, which must be bootstrapped
+over one of the SSH based types but is very fast, and local mode, which acts on the local system.  
+Users can also write their own connection plugins.
 
 Conditionals
 ++++++++++++
@@ -85,8 +87,9 @@ docs section.
 Fireball Mode
 +++++++++++++
 
-By default Ansible uses SSH for connections -- either Paramiko (the actual default) or a common alternative, native Open SSH.  Some users
-may want to execute operations even faster though, and they can if they opt in on running an ephmeral message bus.  What happens is Ansible
+By default Ansible uses SSH for connections -- either Paramiko or a common alternative, native Open SSH.  (Ansible tries to use
+'ssh' by default if possible in Ansible 1.2.1 and later, and before defaulted to Paramiko).  Some users
+may want to execute operations even faster though, and they can if they opt in on running an ephmeral message bus, 'fireball'.  What happens is Ansible
 will start talking to a node over SSH, and then set up a temporary secured message bus good only to talk from one machine, that will
 self destruct after a set period of time.  This means the bus does not allow management of any kind after the time interval has expired.
 
@@ -224,9 +227,7 @@ Ansible uses JSON for return data from remote modules.  This allows modules to b
 only_if
 +++++++
 
-A conditional statement that decides if a task is going to be executed in a playbook based on whether if the following expression
-given is true or false.  The newer 'when_' statements provide a cleaner way to express conditionals, 'only_if' is an older
-construct.  Though it may be still be useful in advanced situations.
+A deprecated form of the "when:" statement. It should no longer be used.
 
 Library
 +++++++
@@ -379,10 +380,10 @@ file transfer) can be achieved with Ansible's copy, template, and fetch resource
 SSH (Native)
 ++++++++++++
 
-Ansible by default uses Paramiko.  Native openssh is specified with "-c ssh" (or a config file, or a directive in the playbook)
-and can be useful if wanting to login via Kerberized SSH or use SSH jump hosts, etc.  Using a client that supports ControlMaster
-and ControlPersist is recommended for maximum performance -- if you don't have that and don't need Kerberos, jump hosts, or other
-features, paramiko (the default) is a fine choice.  Ansible will warn you if it doesn't detect ControlMaster/ControlPersist capability.
+Native openssh as an Ansible tranpsort is specified with "-c ssh" (or a config file, or a directive in the playbook)
+and can be useful if wanting to login via Kerberized SSH or use SSH jump hosts, etc.  In 1.2.1, 'ssh' will be used if the OpenSSH
+on the control machine is sufficiently new, by default.  Previously Ansible selected 'paramiko' as a default.  
+Using a client that supports ControlMaster and ControlPersist is recommended for maximum performance -- if you don't have that and don't need Kerberos, jump hosts, or other features, paramiko (the default) is a good choice.  Ansible will warn you if it doesn't detect ControlMaster/ControlPersist capability.
 
 Tags
 ++++
@@ -411,7 +412,7 @@ Ansible uses "Connection Plugins" to define types of available transports.  Thes
 When
 ++++
 
-When statements (when_string, when_changed, when_boolean, when_integer, etc) are easier to write forms of the only_if conditional. They can be affixed to any task to make that task decide to run only when an expression involving variables or facts is actually true.
+An optional conditional statement attached to a task that is used to determine if the task should run or not. If the expression following the "when:" keyword evaluates to false, the task will be ignored.
 
 Van Halen
 +++++++++

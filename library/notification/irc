@@ -56,6 +56,10 @@ options:
     description:
       - Channel name
     required: true
+  passwd:
+    description:
+      - Server password
+    required: false
 
 # informational: requirements for nodes
 requirements: [ socket ]
@@ -78,6 +82,7 @@ EXAMPLES = '''
 
 import socket
 
+<<<<<<< HEAD
 def send_msg(channel, message, server, port, nickname="ansible"):
     '''send message to IRC'''
 
@@ -128,6 +133,41 @@ def send_msg(channel, message, server, port, nickname="ansible"):
                 loop=False
             else:
                 continue
+=======
+def send_msg(channel, msg, server='localhost', port='6667',
+        nick="ansible", color='black', passwd=False):
+    '''send message to IRC'''
+
+    colornumbers = {
+        'black'  : "01",
+        'red'    : "04",
+        'green'  : "09",
+        'yellow' : "08",
+        'blue'   : "12",
+    }
+
+    try:
+        colornumber = colornumbers[color]
+    except:
+        colornumber = "01"  # black
+
+    message = "\x03" + colornumber + msg
+
+    irc = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
+    irc.connect( ( server, int(port) ) )
+    if passwd:
+        irc.send( 'PASS %s\r\n' % passwd )
+    irc.send( 'NICK %s\r\n' % nick )
+    irc.send( 'USER %s %s %s :ansible IRC\r\n' % (nick, nick, nick))
+    time.sleep(1)
+    irc.send( 'JOIN %s\r\n' % channel )
+    irc.send( 'PRIVMSG %s :%s\r\n' % (channel, message))
+    time.sleep(1)
+    irc.send( 'PART %s\r\n' % channel)
+    irc.send( 'QUIT\r\n' )
+    time.sleep(1)
+    irc.close()
+>>>>>>> fb869e58ee874f7e53a91a41c70fef9d9aee11f2
 
 # ===========================================
 # Main
@@ -143,7 +183,8 @@ def main():
             msg = dict(required = True),
             color = dict(default="black", choices=["yellow", "red", "green",
                                                   "blue", "black"]),
-            channel = dict(required = True)
+            channel = dict(required = True),
+            passwd = dict()
         ),
         supports_check_mode=True
     )
@@ -154,9 +195,14 @@ def main():
     msg     = module.params["msg"]
     color   = module.params["color"]
     channel = module.params["channel"]
+    passwd  = module.params["passwd"]
 
     try:
+<<<<<<< HEAD
         send_msg(channel, msg, server, port, nick)
+=======
+        send_msg(channel, msg, server, port, nick, color, passwd)
+>>>>>>> fb869e58ee874f7e53a91a41c70fef9d9aee11f2
     except Exception, e:
         module.fail_json(msg="unable to send to IRC: %s" % e)
 

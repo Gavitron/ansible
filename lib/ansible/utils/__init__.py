@@ -469,6 +469,8 @@ def base_parser(constants=C, usage="", output_opts=False, runas_opts=False,
         help='use this file to authenticate the connection')
     parser.add_option('-K', '--ask-sudo-pass', default=False, dest='ask_sudo_pass', action='store_true',
         help='ask for sudo password')
+    parser.add_option('--list-hosts', dest='listhosts', action='store_true',
+        help='outputs a list of matching hosts; does not execute anything else')
     parser.add_option('-M', '--module-path', dest='module_path',
         help="specify path(s) to module library (default=%s)" % constants.DEFAULT_MODULE_PATH,
         default=None)
@@ -488,7 +490,7 @@ def base_parser(constants=C, usage="", output_opts=False, runas_opts=False,
             help='log output to this directory')
 
     if runas_opts:
-        parser.add_option("-s", "--sudo", default=False, action="store_true",
+        parser.add_option("-s", "--sudo", default=constants.DEFAULT_SUDO, action="store_true",
             dest='sudo', help="run operations with sudo (nopasswd)")
         parser.add_option('-U', '--sudo-user', dest='sudo_user', help='desired sudo user (default=root)',
             default=None)   # Can't default to root because we need to detect when this option was given
@@ -510,12 +512,12 @@ def base_parser(constants=C, usage="", output_opts=False, runas_opts=False,
 
     if check_opts:
         parser.add_option("-C", "--check", default=False, dest='check', action='store_true',
-            help="don't make any changes, instead try to predict some of the changes that may occur"
+            help="don't make any changes; instead, try to predict some of the changes that may occur"
         )
 
     if diff_opts:
         parser.add_option("-D", "--diff", default=False, dest='diff', action='store_true',
-            help="when changing (small) files and templates, show the differences in those files, works great with --check"
+            help="when changing (small) files and templates, show the differences in those files; works great with --check"
         )
 
 
