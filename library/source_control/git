@@ -73,6 +73,12 @@ options:
             - If C(yes), repository will be updated using the supplied
               remote.  Otherwise the repo will be left untouched.
               Prior to 1.2, this was always 'yes' and could not be disabled.
+notes:
+    - If the task seems to be hanging, first verify remote host is in C(known_hosts).
+      SSH will prompt user to authorize the first contact with a remote host. One solution is to add
+      C(StrictHostKeyChecking no) in C(.ssh/config) which will accept and authorize the connection
+      on behalf of the user. However, if you run as a different user such as setting sudo to True),
+      for example, root will not look at the user .ssh/config setting.
 '''
 
 EXAMPLES = '''
@@ -99,7 +105,7 @@ def get_version(git_path, dest):
     sha = sha[0].split()[1]
     return sha
 
-def clone(git_path, module, repo, dest, remote, depth):
+def clone(git_path, module, repo, dest, remote, depth, version):
     ''' makes a new git repo if it does not already exist '''
     dest_dirname = os.path.dirname(dest)
     try:
@@ -108,6 +114,8 @@ def clone(git_path, module, repo, dest, remote, depth):
         pass
     os.chdir(dest_dirname)
     cmd = [ git_path, 'clone', '-o', remote, '--recursive' ]
+    if version and version != 'HEAD':
+        cmd.extend([ '--branch', str(version) ])
     if depth:
         cmd.extend([ '--depth', str(depth) ])
     cmd.extend([ repo, dest ])
@@ -277,7 +285,10 @@ def switch_version(git_path, module, dest, remote, version):
         cmd = "%s reset --hard %s" % (git_path, remote)
     (rc, out1, err1) = module.run_command(cmd)
     if rc != 0:
-        module.fail_json(msg="Failed to checkout branch %s" % (branch))
+        if version != 'HEAD':
+            module.fail_json(msg="Failed to checkout %s" % (version))
+        else:
+            module.fail_json(msg="Failed to checkout branch %s" % (branch))
     (rc, out2, err2) = submodule_update(git_path, module, dest)
     return (rc, out1 + out2, err1 + err2)
 
@@ -317,7 +328,7 @@ def main():
     if not os.path.exists(gitconfig):
         if module.check_mode:
             module.exit_json(changed=True)
-        (rc, out, err) = clone(git_path, module, repo, dest, remote, depth)
+        (rc, out, err) = clone(git_path, module, repo, dest, remote, depth, version)
     elif not update:
         # Just return having found a repo already in the dest path
         # this does no checking that the repo is the actual repo
@@ -334,6 +345,10 @@ def main():
         (rc, out, err) = reset(git_path, module, dest, force)
         if rc != 0:
             module.fail_json(msg=err)
+        # exit if already at desired sha version
+        # abbreviate version in case full sha is given
+        if before == str(version)[:7]:
+            module.exit_json(changed=False)
         # check or get changes from remote
         remote_head = get_remote_head(git_path, module, dest, version, remote)
         if module.check_mode:

@@ -124,6 +124,7 @@ class Facts(object):
     PKG_MGRS = [ { 'path' : '/usr/bin/yum',         'name' : 'yum' },
                  { 'path' : '/usr/bin/apt-get',     'name' : 'apt' },
                  { 'path' : '/usr/bin/zypper',      'name' : 'zypper' },
+                 { 'path' : '/usr/sbin/urpmi',      'name' : 'urpmi' },
                  { 'path' : '/usr/bin/pacman',      'name' : 'pacman' },
                  { 'path' : '/bin/opkg',            'name' : 'opkg' },
                  { 'path' : '/opt/local/bin/pkgin', 'name' : 'pkgin' },
@@ -626,28 +627,24 @@ class LinuxHardware(Hardware):
             if line.startswith('/'):
                 fields = line.rstrip('\n').split()
                 if(fields[2] != 'none'):
+                    size_total = None
+                    size_available = None
                     try:
                         statvfs_result = os.statvfs(fields[1])
-                        self.facts['mounts'].append(
-                            {'mount': fields[1],
-                             'device':fields[0],
-                             'fstype': fields[2],
-                             'options': fields[3],
-                             # statvfs data
-                             'size_total': statvfs_result.f_bsize * statvfs_result.f_blocks,
-                             'size_available': statvfs_result.f_bsize * (statvfs_result.f_bavail),
-                             })
+                        size_total = statvfs_result.f_bsize * statvfs_result.f_blocks
+                        size_available = statvfs_result.f_bsize * (statvfs_result.f_bavail)
                     except OSError, e:
-                        # don't have access to stat so we'll set to None
-                        self.facts['mounts'].append(
-                            {'mount': fields[1],
-                             'device':fields[0],
-                             'fstype': fields[2],
-                             'options': fields[3],
-                             # statvfs data
-                             'size_total': None,
-                             'size_available': None,
-                             })
+                        continue
+
+                    self.facts['mounts'].append(
+                        {'mount': fields[1],
+                         'device':fields[0],
+                         'fstype': fields[2],
+                         'options': fields[3],
+                         # statvfs data
+                         'size_total': size_total,
+                         'size_available': size_available,
+                         })
 
     def get_device_facts(self):
         self.facts['devices'] = {}
@@ -1089,26 +1086,27 @@ class AIX(Hardware):
 
 
         rc, out, err = module.run_command("/usr/sbin/lsdev -Cc processor")
-        i = 0
-        for line in out.split('\n'):
+        if out:
+            i = 0
+            for line in out.split('\n'):
 
-            if 'Available' in line:
-                if i == 0:
-                    data = line.split(' ')
-                    cpudev = data[0]
+                if 'Available' in line:
+                    if i == 0:
+                        data = line.split(' ')
+                        cpudev = data[0]
 
-                i += 1
-        self.facts['processor_count'] = int(i)
+                    i += 1
+            self.facts['processor_count'] = int(i)
 
-        rc, out, err = module.run_command("/usr/sbin/lsattr -El " + cpudev + " -a type")
+            rc, out, err = module.run_command("/usr/sbin/lsattr -El " + cpudev + " -a type")
 
-        data = out.split(' ')
-        self.facts['processor'] = data[1]
+            data = out.split(' ')
+            self.facts['processor'] = data[1]
 
-        rc, out, err = module.run_command("/usr/sbin/lsattr -El " + cpudev + " -a smt_threads")
+            rc, out, err = module.run_command("/usr/sbin/lsattr -El " + cpudev + " -a smt_threads")
 
-        data = out.split(' ')
-        self.facts['processor_cores'] = int(data[1])
+            data = out.split(' ')
+            self.facts['processor_cores'] = int(data[1])
 
     def get_memory_facts(self):
         pagesize = 4096
@@ -1126,12 +1124,13 @@ class AIX(Hardware):
         # /dev/ada0p3        314368        0   314368     0%
         #
         rc, out, err = module.run_command("/usr/sbin/lsps -s")
-        lines = out.split('\n')
-        data = lines[1].split()
-        swaptotal_mb = long(data[0].rstrip('MB'))
-        percused = int(data[1].rstrip('%'))
-        self.facts['swaptotal_mb'] = swaptotal_mb
-        self.facts['swapfree_mb'] = long(swaptotal_mb * ( 100 - percused ) / 100)
+        if out:
+            lines = out.split('\n')
+            data = lines[1].split()
+            swaptotal_mb = long(data[0].rstrip('MB'))
+            percused = int(data[1].rstrip('%'))
+            self.facts['swaptotal_mb'] = swaptotal_mb
+            self.facts['swapfree_mb'] = long(swaptotal_mb * ( 100 - percused ) / 100)
 
     def get_dmi_facts(self):
         rc, out, err = module.run_command("/usr/sbin/lsattr -El sys0 -a fwversion")
